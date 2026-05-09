@@ -7,10 +7,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
+// Entry point for the interpreter.
 public class Lox {
 
     static boolean hadError = false;
 
+    // Chooses file mode or prompt mode.
     public static void main(String[] args) throws IOException {
         if (args.length > 1) {
             System.out.println("Usage: jlox [script]");
@@ -22,11 +24,13 @@ public class Lox {
         }
     }
 
+    // Reads a file and sends it to the scanner.
     private static void runFile(String path) throws IOException {
         byte[] bytes = Files.readAllBytes(Paths.get(path));
         run(new String(bytes, Charset.defaultCharset()));
     }
 
+    // Reads and runs lines from standard input.
     private static void runPrompt() throws IOException {
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
@@ -41,20 +45,23 @@ public class Lox {
         }
     }
 
+    // Scans source code and prints the tokens.
     private static void run(String source) {
         Scanner scanner = new Scanner(source);
         List<Token> tokens = scanner.scanTokens();
 
-        // For now, just print the tokens.
+        // Print each token.
         for (Token token : tokens) {
             System.out.println(token);
         }
     }
 
+    // Reports an error at a line.
     static void error(int line, String message) {
         report(line, "", message);
     }
 
+    // Formats the error and marks failure.
     private static void report(int line, String where,
             String message) {
         System.err.println(
