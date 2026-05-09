@@ -1,0 +1,38 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+target/
+build/
+dist/
+*.log
+
+# C/C++
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Build
+.gradle/
+.maven/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
