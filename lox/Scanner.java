@@ -90,6 +90,21 @@ class Scanner {
                     while (peek() != '\n' && !isAtEnd()) {
                         advance();
                     }
+                } else if (match('*')) {
+                    // Skip a block comment.
+                    while (!(peek() == '*' && peekNext() == '/') && !isAtEnd()) {
+                        if (peek() == '\n') {
+                            line++;
+                        }
+                        advance();
+                    }
+                    // Unterminated block comment.
+                    if (isAtEnd()) {
+                        Lox.error(line, "Unterminated block comment.");
+                        return;
+                    }
+                    advance();
+                    advance();
                 } else {
                     addToken(TokenType.SLASH);
                 }
