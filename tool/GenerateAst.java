@@ -28,29 +28,27 @@ public class GenerateAst {
             String outputDir, String baseName, List<String> types)
             throws IOException {
         String path = outputDir + "/" + baseName + ".java";
-        // Try-with-resources would be ideal here, but using PrintWriter for simplicity
-        PrintWriter writer = new PrintWriter(path, "UTF-8");
+        try (PrintWriter writer = new PrintWriter(path, "UTF-8")) {
+            writer.println("import java.util.List;");
+            writer.println();
+            writer.println("abstract class " + baseName + " {");
 
-        writer.println("import java.util.List;");
-        writer.println();
-        writer.println("abstract class " + baseName + " {");
+            // Generate the Visitor interface for implementing the visitor pattern
+            defineVisitor(writer, baseName, types);
 
-        // Generate the Visitor interface for implementing the visitor pattern
-        defineVisitor(writer, baseName, types);
+            // Generate concrete AST node classes for each expression type
+            for (String type : types) {
+                String className = type.split(":")[0].trim();
+                String fields = type.split(":")[1].trim();
+                defineType(writer, baseName, className, fields);
+            }
 
-        // Generate concrete AST node classes for each expression type
-        for (String type : types) {
-            String className = type.split(":")[0].trim();
-            String fields = type.split(":")[1].trim();
-            defineType(writer, baseName, className, fields);
+            // Generate the abstract accept() method that subclasses must implement
+            writer.println();
+            writer.println("  abstract <R> R accept(Visitor<R> visitor);");
+
+            writer.println("}");
         }
-
-        // Generate the abstract accept() method that subclasses must implement
-        writer.println();
-        writer.println("  abstract <R> R accept(Visitor<R> visitor);");
-
-        writer.println("}");
-        writer.close();
     }
 
     // Generates a concrete AST node class with constructor, fields, and visitor method
