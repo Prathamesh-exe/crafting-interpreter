@@ -5,6 +5,8 @@ abstract class Expr {
 
         R visitBinaryExpr(Binary expr);
 
+        R visitConditionalExpr(Conditional expr);
+
         R visitGroupingExpr(Grouping expr);
 
         R visitLiteralExpr(Literal expr);
@@ -28,6 +30,24 @@ abstract class Expr {
         final Expr left;
         final Token operator;
         final Expr right;
+    }
+
+    static class Conditional extends Expr {
+
+        Conditional(Expr condition, Expr thenExpr, Expr elseExpr) {
+            this.condition = condition;
+            this.thenExpr = thenExpr;
+            this.elseExpr = elseExpr;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitConditionalExpr(this);
+        }
+
+        final Expr condition;
+        final Expr thenExpr;
+        final Expr elseExpr;
     }
 
     static class Grouping extends Expr {

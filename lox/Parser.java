@@ -2,13 +2,15 @@
 import java.util.List;
 
 //Grammar:
-// expression     → equality ;
-// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-// comparison     → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
-// addition       → multiplication ( ( "-" | "+" ) multiplication )* ;
+// expression    → comma ;
+// comma         → conditional ( "," conditional )* ;
+// conditional   → equality ( "?" equality ":" conditional )? ;
+// equality      → comparison ( ( "!=" | "==" ) comparison )* ;
+// comparison    → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
+// addition      → multiplication ( ( "-" | "+" ) multiplication )* ;
 // multiplication → unary ( ( "/" | "*" ) unary )* ;    
-// unary          → ( "!" | "-" ) unary | primary ;
-// primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ; //base case for recursion
+// unary         → ( "!" | "-" ) unary | primary ;
+// primary       → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ; //base case for recursion
 class Parser {
 
     private static class ParseError extends RuntimeException {
@@ -30,7 +32,35 @@ class Parser {
     }
 
     private Expr expression() {
-        return equality();
+        return comma();
+    }
+
+    //Rule: comma → conditional ( "," conditional )* ;
+    //Left-associative: evaluates left-to-right, discards left result, returns right result
+    private Expr comma() {
+        Expr expr = conditional();
+
+        while (match(TokenType.COMMA)) {
+            Expr right = conditional();
+            expr = new Expr.Binary(expr, previous(), right);
+        }
+
+        return expr;
+    }
+
+    //Rule: conditional → equality ( "?" equality ":" conditional )? ;
+    //Right-associative: nests on the right side
+    private Expr conditional() {
+        Expr expr = equality();
+
+        if (match(TokenType.QUESTION)) {
+            Expr thenExpr = equality();
+            consume(TokenType.COLON, "Expect ':' after then branch of conditional expression.");
+            Expr elseExpr = conditional(); // Right-associative: recurse on else branch
+            expr = new Expr.Conditional(expr, thenExpr, elseExpr);
+        }
+
+        return expr;
     }
 
     //Rule: equality → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -102,6 +132,7 @@ class Parser {
         return new ParseError();
     }
 
+    @SuppressWarnings("unused")
     private void synchronize() {
         advance();
 

@@ -76,6 +76,10 @@ class Scanner {
                 addToken(TokenType.SEMICOLON);
             case '*' ->
                 addToken(TokenType.STAR);
+            case '?' ->
+                addToken(TokenType.QUESTION);
+            case ':' ->
+                addToken(TokenType.COLON);
             case '!' ->
                 addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG);
             case '=' ->
