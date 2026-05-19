@@ -10,7 +10,10 @@ import java.util.List;
 // Entry point for the interpreter.
 public class Lox {
 
+    private static final Interpreter interpreter = new Interpreter();
+
     static boolean hadError = false;
+    static boolean hadRuntimeError = false;
 
     // Chooses file mode or prompt mode.
     public static void main(String[] args) throws IOException {
@@ -55,10 +58,15 @@ public class Lox {
 
         // Stop if there was a syntax error.
         if (hadError) {
-            return;
+            System.exit(65);
+        }
+// Stop if there was a runtime error.
+        if (hadRuntimeError) {
+            System.exit(70);
         }
 
-        System.out.println(new AstPrinter().print(expression));
+        // System.out.println(new AstPrinter().print(expression));
+        interpreter.interpret(expression);
 
     }
 
@@ -82,6 +90,12 @@ public class Lox {
         } else {
             report(token.line, " at '" + token.lexeme + "'", message);
         }
+    }
+
+    static void runtimeError(RuntimeError error) {
+        System.err.println(error.getMessage()
+                + "\n[line " + error.token.line + "]");
+        hadRuntimeError = true;
     }
 
 }
