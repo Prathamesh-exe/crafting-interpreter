@@ -72,18 +72,25 @@ class Interpreter implements Expr.Visitor<Object> {
                 yield (double) left - (double) right;
             }
             case PLUS -> {
+                // If either operand is a string, stringify both and concatenate
+                if (left instanceof String || right instanceof String) {
+                    yield stringify(left) + stringify(right);
+                }
+                // Otherwise, both must be numbers
                 if (left instanceof Double && right instanceof Double) {
                     yield (double) left + (double) right;
                 }
-                if (left instanceof String && right instanceof String) {
-                    yield (String) left + (String) right;
-                }
                 throw new RuntimeError(expr.operator,
-                        "Operands must be two numbers or two strings.");
+                        "Operands must be two numbers or at least one string.");
             }
             case SLASH -> {
                 checkNumberOperands(expr.operator, left, right);
-                yield (double) left / (double) right;
+                double divisor = (double) right;
+                if (divisor == 0.0) {
+                    throw new RuntimeError(expr.operator,
+                            "Division by zero.");
+                }
+                yield (double) left / divisor;
             }
             case STAR -> {
                 checkNumberOperands(expr.operator, left, right);
