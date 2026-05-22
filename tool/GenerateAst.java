@@ -14,12 +14,21 @@ public class GenerateAst {
         }
         String outputDir = args[0];
 
-        // Generate the Expr AST class with Binary, Grouping, Literal, and Unary expressions
+        // Generate the Expr AST class with Binary, Grouping, Literal, Unary, and Ternary expressions
         defineAst(outputDir, "Expr", Arrays.asList(
                 "Binary   : Expr left, Token operator, Expr right",
                 "Grouping : Expr expression",
                 "Literal  : Object value",
-                "Unary    : Token operator, Expr right"
+                "Ternary  : Expr condition, Expr thenExpr, Expr elseExpr",
+                "Unary    : Token operator, Expr right",
+                "Variable  : Token name",
+                "Assign   : Token name, Expr value"
+        ));
+// Generate the Stmt AST class with Expression and Print statements
+        defineAst(outputDir, "Stmt", Arrays.asList(
+                "Expression : Expr expression",
+                "Print      : Expr expression",
+                "Var        : Token name, Expr initializer"
         ));
     }
 

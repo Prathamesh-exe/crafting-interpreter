@@ -1,16 +1,23 @@
 
+import java.util.ArrayList;
 import java.util.List;
 
 //Grammar:
-// expression    → comma ;
-// comma         → conditional ( "," conditional )* ;
-// conditional   → equality ( "?" equality ":" conditional )? ;
+//program        → expression EOF ;
+//declaration     → varDecl | statement ;
+//varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+//statement      → exprStmt | printStmt ;
+//exprStmt       → expression ";" ;
+//printStmt      → "print" expression ";" ;
+// expression    → assignment ;
+// assignment    → IDENTIFIER "=" assignment | ternary ;
+// ternary       → equality ( "?" equality ":" ternary )? ;
 // equality      → comparison ( ( "!=" | "==" ) comparison )* ;
 // comparison    → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 // addition      → multiplication ( ( "-" | "+" ) multiplication )* ;
 // multiplication → unary ( ( "/" | "*" ) unary )* ;    
 // unary         → ( "!" | "-" ) unary | primary ;
-// primary       → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ; //base case for recursion
+// primary       → NUMBER | STRING | "true" | "false" | IDENTIFIER | "(" expression ")"   ; //base case for recursion
 class Parser {
 
     private static class ParseError extends RuntimeException {
@@ -23,16 +30,87 @@ class Parser {
         this.tokens = tokens;
     }
 
-    Expr parse() {
-        try {
-            return expression();
-        } catch (ParseError error) {
-            return null;
+    List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!isAtEnd()) {
+            try {
+                statements.add(declaration());
+            } catch (ParseError error) {
+                synchronize();
+            }
         }
+
+        return statements;
     }
 
     private Expr expression() {
-        return comma();
+        return assignment();
+    }
+
+    private Expr assignment() {
+        Expr expr = equality();
+
+        if (match(TokenType.EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment();
+
+            if (expr instanceof Expr.Variable variable) {
+                Token name = variable.name;
+                return new Expr.Assign(name, value);
+            }
+
+            throw error(equals, "Invalid assignment target.");
+        }
+
+        return expr;
+    }
+//
+
+    private Stmt declaration() {
+        try {
+            if (match(TokenType.VAR)) {
+                return varDeclaration();
+            }
+
+            return statement();
+        } catch (ParseError error) {
+            synchronize();
+            return null;
+        }
+    }
+//Rule: varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
+
+    private Stmt varDeclaration() {
+        Token name = consume(TokenType.IDENTIFIER, "Expect variable name.");
+
+        Expr initializer = null;
+        if (match(TokenType.EQUAL)) {
+            initializer = expression();
+        }
+
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
+    }
+//Rule: statement → exprStmt | printStmt ;
+
+    private Stmt statement() {
+        if (match(TokenType.PRINT)) {
+            return printStatement();
+        }
+
+        return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(TokenType.SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(expr);
     }
 
     //Rule: comma → conditional ( "," conditional )* ;
@@ -57,7 +135,7 @@ class Parser {
             Expr thenExpr = equality();
             consume(TokenType.COLON, "Expect ':' after then branch of conditional expression.");
             Expr elseExpr = conditional(); // Right-associative: recurse on else branch
-            expr = new Expr.Conditional(expr, thenExpr, elseExpr);
+            expr = new Expr.Ternary(expr, thenExpr, elseExpr);
         }
 
         return expr;
@@ -132,7 +210,6 @@ class Parser {
         return new ParseError();
     }
 
-    @SuppressWarnings("unused")
     private void synchronize() {
         advance();
 
@@ -213,6 +290,10 @@ class Parser {
 
         if (match(TokenType.NUMBER, TokenType.STRING)) {
             return new Expr.Literal(previous().literal);
+        }
+
+        if (match(TokenType.IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
 
         if (match(TokenType.LEFT_PAREN)) {
