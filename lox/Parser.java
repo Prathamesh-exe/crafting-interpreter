@@ -3,21 +3,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 //Grammar:
-//program        → expression EOF ;
-//declaration     → varDecl | statement ;
+//program        → declaration* EOF ;
+//declaration    → varDecl | statement ;
 //varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-//statement      → exprStmt | printStmt ;
+//statement      → exprStmt | printStmt | block ;
+//block          → "{" declaration* "}" ;
 //exprStmt       → expression ";" ;
 //printStmt      → "print" expression ";" ;
 // expression    → assignment ;
-// assignment    → IDENTIFIER "=" assignment | ternary ;
-// ternary       → equality ( "?" equality ":" ternary )? ;
+// assignment    → conditional ( "=" assignment )? ;
+// conditional   → equality ( "?" equality ":" conditional )? ;
 // equality      → comparison ( ( "!=" | "==" ) comparison )* ;
 // comparison    → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 // addition      → multiplication ( ( "-" | "+" ) multiplication )* ;
 // multiplication → unary ( ( "/" | "*" ) unary )* ;    
 // unary         → ( "!" | "-" ) unary | primary ;
-// primary       → NUMBER | STRING | "true" | "false" | IDENTIFIER | "(" expression ")"   ; //base case for recursion
+// primary       → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER | "(" expression ")" ;
 class Parser {
 
     private static class ParseError extends RuntimeException {
@@ -48,7 +49,7 @@ class Parser {
     }
 
     private Expr assignment() {
-        Expr expr = equality();
+        Expr expr = conditional();
 
         if (match(TokenType.EQUAL)) {
             Token equals = previous();
@@ -97,6 +98,9 @@ class Parser {
         if (match(TokenType.PRINT)) {
             return printStatement();
         }
+        if (match(TokenType.LEFT_BRACE)) {
+            return new Stmt.Block(block());
+        }
 
         return expressionStatement();
     }
@@ -113,17 +117,15 @@ class Parser {
         return new Stmt.Expression(expr);
     }
 
-    //Rule: comma → conditional ( "," conditional )* ;
-    //Left-associative: evaluates left-to-right, discards left result, returns right result
-    private Expr comma() {
-        Expr expr = conditional();
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
 
-        while (match(TokenType.COMMA)) {
-            Expr right = conditional();
-            expr = new Expr.Binary(expr, previous(), right);
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
         }
 
-        return expr;
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
     }
 
     //Rule: conditional → equality ( "?" equality ":" conditional )? ;
