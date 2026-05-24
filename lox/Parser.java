@@ -1,18 +1,24 @@
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 //Grammar:
 //program        → declaration* EOF ;
 //declaration    → varDecl | statement ;
 //varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-//statement      → exprStmt | printStmt | block ;
+//statement      → exprStmt | ifStmt | printStmt | block | whileStmt | forStmt ;
+//forStmt         → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
+// whileStmt      → "while" "(" expression ")" statement ;
+//ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 //block          → "{" declaration* "}" ;
 //exprStmt       → expression ";" ;
 //printStmt      → "print" expression ";" ;
 // expression    → assignment ;
 // assignment    → conditional ( "=" assignment )? ;
-// conditional   → equality ( "?" equality ":" conditional )? ;
+// conditional   → logic_or ( "?" logic_or ":" conditional )? ;
+// logic_or      → logic_and ( "or" logic_and )* ;
+// logic_and     → equality ( "and" equality )* ;
 // equality      → comparison ( ( "!=" | "==" ) comparison )* ;
 // comparison    → addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 // addition      → multiplication ( ( "-" | "+" ) multiplication )* ;
@@ -65,7 +71,30 @@ class Parser {
 
         return expr;
     }
-//
+
+    private Expr or() {
+        Expr expr = and();
+
+        while (match(TokenType.OR)) {
+            Token operator = previous();
+            Expr right = and();
+            expr = new Expr.Logical(expr, operator, right);
+        }
+
+        return expr;
+    }
+
+    private Expr and() {
+        Expr expr = equality();
+
+        while (match(TokenType.AND)) {
+            Token operator = previous();
+            Expr right = equality();
+            expr = new Expr.Logical(expr, operator, right);
+        }
+
+        return expr;
+    }
 
     private Stmt declaration() {
         try {
@@ -95,6 +124,18 @@ class Parser {
 //Rule: statement → exprStmt | printStmt ;
 
     private Stmt statement() {
+        if (match(TokenType.FOR)) {
+            return forStatement();
+        }
+
+        if (match(TokenType.WHILE)) {
+            return whileStatement();
+        }
+
+        if (match(TokenType.IF)) {
+            return ifStatement();
+        }
+
         if (match(TokenType.PRINT)) {
             return printStatement();
         }
@@ -103,6 +144,70 @@ class Parser {
         }
 
         return expressionStatement();
+    }
+
+    private Stmt whileStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+        Expr condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+        Stmt body = statement();
+
+        return new Stmt.While(condition, body);
+    }
+
+    private Stmt forStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+        Stmt initializer;
+        if (match(TokenType.VAR)) {
+            initializer = varDeclaration();
+        } else {
+            initializer = expressionStatement();
+        }
+
+        Expr condition = null;
+        if (!check(TokenType.SEMICOLON)) {
+            condition = expression();
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after condition.");
+
+        Expr increment = null;
+        if (!check(TokenType.RIGHT_PAREN)) {
+            increment = expression();
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        Stmt body = statement();
+
+        if (increment != null) {
+            body = new Stmt.Block(
+                    Arrays.asList(
+                            body,
+                            new Stmt.Expression(increment)));
+        }
+
+        if (condition == null) {
+            condition = new Expr.Literal(true);
+        }
+        body = new Stmt.While(condition, body);
+
+        if (initializer != null) {
+            body = new Stmt.Block(Arrays.asList(initializer, body));
+        }
+        return body;
+    }
+
+    private Stmt ifStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+        Expr condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+
+        Stmt thenBranch = statement();
+        Stmt elseBranch = null;
+        if (match(TokenType.ELSE)) {
+            elseBranch = statement();
+        }
+
+        return new Stmt.If(condition, thenBranch, elseBranch);
     }
 
     private Stmt printStatement() {
@@ -128,13 +233,13 @@ class Parser {
         return statements;
     }
 
-    //Rule: conditional → equality ( "?" equality ":" conditional )? ;
+    //Rule: conditional → or ( "?" or ":" conditional )? ;
     //Right-associative: nests on the right side
     private Expr conditional() {
-        Expr expr = equality();
+        Expr expr = or();
 
         if (match(TokenType.QUESTION)) {
-            Expr thenExpr = equality();
+            Expr thenExpr = or();
             consume(TokenType.COLON, "Expect ':' after then branch of conditional expression.");
             Expr elseExpr = conditional(); // Right-associative: recurse on else branch
             expr = new Expr.Ternary(expr, thenExpr, elseExpr);
